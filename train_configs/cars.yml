@@ -1,0 +1,9 @@
+# Configuration file for shapenet cars training (see paper section 4, paragraph 4)
+# Datasets can be downloaded here: https://drive.google.com/drive/folders/1OkYgeRcIcLOFu1ft5mRODWNQaPJ0ps90
+
+data_root: "" # Path to cars training dataset.
+val_root: # Path to cars validation set, consisting of the same cars as in the training set, but with novel camera views.
+logging_root: ./logs/cars
+img_sidelengths: 64,128
+batch_size_per_img_sidelength: 64,16 # This is for a GPU with 48 GB of memory. Adapt accordingly for your GPU memory.
+max_steps_per_img_sidelength: 5000,170000

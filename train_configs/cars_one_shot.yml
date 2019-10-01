@@ -1,0 +1,12 @@
+# Configuration file for few-shot shapenet cars experiment (see paper section 4, paragraph 4)
+
+data_root: "" # Path to cars dataset, can be downloaded here: https://drive.google.com/drive/folders/1OkYgeRcIcLOFu1ft5mRODWNQaPJ0ps90
+logging_root: "./"
+checkpoint_path: "" # Path to the pre-trained checkpoint
+overwrite_embeddings: True
+specific_samples: "64"
+freeze_networks: True
+img_sidelengths: "128"
+batch_size_per_img_sidelength: 8
+max_steps_per_img_sidelength: 100000
+
