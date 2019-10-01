@@ -1,0 +1,3 @@
+[submodule "pytorch_prototyping"]
+	path = pytorch_prototyping
+	url = git@github.com:vsitzmann/pytorch_prototyping.git
