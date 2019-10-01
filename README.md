@@ -41,8 +41,8 @@ The code is organized as follows:
 * geometry.py contains utility functions for 3D and projective geometry.
 * util.py contains misc utility functions.
 
-### Data:
-Four different dataset appear in the paper:
+### Data
+Four different datasets appear in the paper:
 * Shapenet v2 chairs and car classes.
 * Shepard-Metzler objects.
 * Bazel face dataset.
@@ -62,7 +62,7 @@ To monitor progress, the training code writes tensorboard summaries every 100 st
 For experiments described in the paper, config-files are available that configure the command-line flags according to
 the settings in the paper. You only need to edit the dataset path. Example call:
 ```
-[edit train_configs/cars.yml to point to the correct dataset and looging paths]
+[edit train_configs/cars.yml to point to the correct dataset and logging paths]
 python train.py --config_filepath train_configs/cars.yml
 ```
 
@@ -76,7 +76,7 @@ python run_srns.py --train_test test \
 ```
 
 ## Misc
-### Citation:  
+### Citation
 If you find our work useful in your research, please cite:
 ```
 @inproceedings{sitzmann2019srns,
@@ -93,5 +93,5 @@ If you find our work useful in your research, please cite:
 The code in the subdirectory "pytorch_prototyping" comes from a library of custom pytorch modules that I use throughout my 
 research projects. You can find it [here](https://github.com/vsitzmann/pytorch_prototyping).
 
-### Contact:
+### Contact
 If you have any questions, please email Vincent Sitzmann at sitzmann@cs.stanford.edu.
