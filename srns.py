@@ -177,7 +177,7 @@ class SRNsModel(nn.Module):
         predictions = util.lin2img(predictions)
 
         if ground_truth is not None:
-            trgt_imgs = ground_truth
+            trgt_imgs = ground_truth["rgb"]
             trgt_imgs = util.lin2img(trgt_imgs)
 
             return torch.cat((normals.cpu(), predictions.cpu(), trgt_imgs.cpu()), dim=3).numpy()

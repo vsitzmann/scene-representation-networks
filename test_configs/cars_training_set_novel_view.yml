@@ -3,7 +3,7 @@
 
 data_root: "" # Path to cars training_test set (cars from training set with novel views).
 logging_root: ./logs/cars
-num_instances: 2434 # The number of cars that the model was trained with.
-checkpoint:
+num_instances: 2433 # The number of cars that the model was trained with.
+checkpoint: '' # The path to the trained checkpoint
 img_sidelength: 128
 batch_size: 16 # This is for a GPU with 48 GB of memory. Adapt accordingly for your GPU memory.

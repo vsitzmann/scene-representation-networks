@@ -10,6 +10,7 @@ from srns import *
 import util
 
 p = configargparse.ArgumentParser()
+p.add('-c', '--config_filepath', required=False, is_config_file=True, help='Path to config file.')
 
 # Note: in contrast to training, no multi-resolution!
 p.add_argument('--img_sidelength', type=int, default=128, required=False,
@@ -76,7 +77,7 @@ def test():
 
     print("Loading model from %s" % opt.checkpoint_path)
     util.custom_load(model, path=opt.checkpoint_path, discriminator=None,
-                     overwrite_embeddings=opt.overwrite_embeddings)
+                     overwrite_embeddings=False)
 
     model.eval()
     model.cuda()
@@ -94,7 +95,7 @@ def test():
 
     print('Beginning evaluation...')
     with torch.no_grad():
-        obj_idx = 0
+        instance_idx = 0
         idx = 0
         psnrs, ssims = list(), list()
         for model_input, ground_truth in dataset:
@@ -104,24 +105,24 @@ def test():
             psnrs.extend(psnr)
             ssims.extend(ssim)
 
-            obj_idcs = model_input['obj_idx']
+            instance_idcs = model_input['instance_idx']
             print("Object instance %d. Running mean PSNR %0.6f SSIM %0.6f" %
-                  (obj_idcs[-1], np.mean(psnrs), np.mean(ssims)))
+                  (instance_idcs[-1], np.mean(psnrs), np.mean(ssims)))
 
-            if obj_idx < opt.save_out_first_n:
+            if instance_idx < opt.save_out_first_n:
                 output_imgs = model.get_output_img(model_outputs).cpu().numpy()
                 comparisons = model.get_comparisons(model_input,
                                                     model_outputs,
                                                     ground_truth)
                 for i in range(len(output_imgs)):
-                    prev_obj_idx = obj_idx
-                    obj_idx = obj_idcs[i]
+                    prev_instance_idx = instance_idx
+                    instance_idx = instance_idcs[i]
 
-                    if prev_obj_idx != obj_idx:
+                    if prev_instance_idx != instance_idx:
                         idx = 0
 
-                    img_only_path = os.path.join(renderings_dir, "%06d" % obj_idx)
-                    comp_path = os.path.join(gt_comparison_dir, "%06d" % obj_idx)
+                    img_only_path = os.path.join(renderings_dir, "%06d" % instance_idx)
+                    comp_path = os.path.join(gt_comparison_dir, "%06d" % instance_idx)
 
                     util.cond_mkdir(img_only_path)
                     util.cond_mkdir(comp_path)

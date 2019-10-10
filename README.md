@@ -53,8 +53,8 @@ Please download the datasets [here](https://drive.google.com/drive/folders/1OkYg
 See `python train.py --help` for all train options. 
 Example train call:
 ```
-python train.py --train_test train \
-                --data_root [path to directory with dataset] \
+python train.py --data_root [path to directory with dataset] \
+                --val_root [path to directory with train_val dataset] \
                 --logging_root [path to directory where tensorboard summaries and checkpoints should be written to] 
 ```
 To monitor progress, the training code writes tensorboard summaries every 100 steps into a "events" subdirectory in the logging_root.
@@ -69,10 +69,16 @@ python train.py --config_filepath train_configs/cars.yml
 ### Testing
 Example test call:
 ```
-python run_srns.py --train_test test \
-                   --data_root [path to directory with dataset] ]
-                   --logging_root [path to directoy where test output should be written to] \
-                   --checkpoint [path to checkpoint]
+python test.py --data_root [path to directory with dataset] ] \
+               --logging_root [path to directoy where test output should be written to] \
+               --num_instances [number of instances in training set (for instance, 2433 for shapenet cars)] \
+               --checkpoint [path to checkpoint]
+```
+Again, for experiments described in the paper, config-files are available that configure the command-line flags according to
+the settings in the paper. Example call:
+```
+[edit test_configs/cars.yml to point to the correct dataset and logging paths]
+python test.py --config_filepath test_configs/cars_training_set_novel_view.yml
 ```
 
 ## Misc
