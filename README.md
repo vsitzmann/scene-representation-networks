@@ -49,6 +49,20 @@ Four different datasets appear in the paper:
 
 Please download the datasets [here](https://drive.google.com/drive/folders/1OkYgeRcIcLOFu1ft5mRODWNQaPJ0ps90?usp=sharing).
 
+### Coordinate and camera parameter conventions
+This code uses an "OpenCV" style camera coordinate system, where the Y-axis points downwards (the up-vector points in the negative Y-direction), 
+the X-axis points right, and the Z-axis points into the image plane. Camera poses are assumed to be in a "camera2world" format,
+i.e., they denote the matrix transform that transforms camera coordinates to world coordinates.
+
+The code also reads an "intrinsics.txt" file from the dataset directory. This file is expected to be structured as follows (unnamed constants are unused):
+```
+f cx cy 0.
+0. 0. 0.
+1.
+img_height img_width
+```
+The focal length, cx and cy are in pixels. Height and width are the resolution of the image.
+
 ### Training
 See `python train.py --help` for all train options. 
 Example train call:
