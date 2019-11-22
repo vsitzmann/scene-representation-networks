@@ -13,8 +13,15 @@ p = configargparse.ArgumentParser()
 p.add('-c', '--config_filepath', required=False, is_config_file=True, help='Path to config file.')
 
 # Note: in contrast to training, no multi-resolution!
-p.add_argument('--img_sidelength', type=int, default=128, required=False,
-               help='Sidelength of test images.')
+p.add_argument('--img_H', type=int, default=128, required=False,
+               help='Height of test images.')
+p.add_argument('--img_W', type=int, default=128, required=False,
+               help='Width of test images.')
+p.add_argument('--img_sidelength', type=str, default=0, required=False,
+               help='Sidelength of test images (assumes square images).'
+                    'If specified, takes precendence to img_H and img_W.')
+p.add_argument('--use_2D_dataset', action='store_true', default=False,
+               help='Whether to force conversion of test data into 1D images (2D world).')
 
 p.add_argument('--data_root', required=True, help='Path to directory with training data.')
 p.add_argument('--logging_root', type=str, default='./logs',
@@ -54,19 +61,30 @@ def test():
     else:
         specific_observation_idcs = None
 
+    img_sidelength = opt.img_sidelength
+    if img_sidelength > 0:
+      img_H = img_sidelength
+      img_W = img_sidelength
+    else:
+      img_H = opt.img_H
+      img_W = opt.img_W
+
     dataset = dataio.SceneClassDataset(root_dir=opt.data_root,
                                        max_num_instances=opt.max_num_instances,
                                        specific_observation_idcs=specific_observation_idcs,
                                        max_observations_per_instance=-1,
                                        samples_per_instance=1,
-                                       img_sidelength=opt.img_sidelength)
+                                       img_H=img_H,
+                                       img_W=img_W)
     dataset = DataLoader(dataset,
                          collate_fn=dataset.collate_fn,
                          batch_size=1,
                          shuffle=False,
                          drop_last=False)
 
-    model = SRNsModel(num_instances=opt.num_instances,
+    model = SRNsModel(img_H=img_H,
+                      img_W=img_W,
+                      num_instances=opt.num_instances,
                       latent_dim=opt.embedding_size,
                       has_params=opt.has_params,
                       fit_single_srn=opt.fit_single_srn,
