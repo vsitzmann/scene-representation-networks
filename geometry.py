@@ -5,37 +5,18 @@ from torch.nn import functional as F
 import util
 
 
-def compute_normal_map(x_img, y_img, z, intrinsics, img_H, img_W):
-    if img_H == 1:
-        return compute_normal_map_1D(x_img, y_img, z, intrinsics, img_H, img_W)
-
+def compute_normal_map(x_img, y_img, z, intrinsics):
     cam_coords = lift(x_img, y_img, z, intrinsics)
-    cam_coords = util.lin2img(cam_coords, img_H, img_W)
+    cam_coords = util.lin2img(cam_coords)
 
-    shift_left = cam_coords[:, :, :, 2:]
-    shift_right = cam_coords[:, :, :, :-2]
+    shift_left = cam_coords[:, :, 2:, :]
+    shift_right = cam_coords[:, :, :-2, :]
 
-    shift_up = cam_coords[:, :, 2:, :]
-    shift_down = cam_coords[:, :, :-2, :]
+    shift_up = cam_coords[:, :, :, 2:]
+    shift_down = cam_coords[:, :, :, :-2]
 
-    diff_hor = F.normalize(shift_right - shift_left, dim=1)[:, :, 1:-1, :]
-    diff_ver = F.normalize(shift_up - shift_down, dim=1)[:, :, :, 1:-1]
-
-    cross = torch.cross(diff_hor, diff_ver, dim=1)
-    return cross
-
-def compute_normal_map_1D(x_img, y_img, z, intrinsics, img_H, img_W):
-    # assumes img_H = 1 and assumes y_img is constant
-
-    cam_coords = lift(x_img, y_img, z, intrinsics)
-    cam_coords = util.lin2img(cam_coords, img_H, img_W)
-
-    shift_left = cam_coords[:, :, :, 2:]
-    shift_right = cam_coords[:, :, :, :-2]
-
-    diff_hor = F.normalize(shift_right - shift_left, dim=1)[:, :, :, :]
-    diff_ver = torch.zeros(diff_hor.shape).cuda()
-    diff_ver[:,1] = 1
+    diff_hor = F.normalize(shift_right - shift_left, dim=1)[:, :, :, 1:-1]
+    diff_ver = F.normalize(shift_up - shift_down, dim=1)[:, :, 1:-1, :]
 
     cross = torch.cross(diff_hor, diff_ver, dim=1)
     return cross

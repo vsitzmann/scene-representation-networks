@@ -19,8 +19,6 @@ class SRNsModel(nn.Module):
                  num_instances,
                  latent_dim,
                  tracing_steps,
-                 img_H=None,
-                 img_W=None,
                  has_params=False,
                  fit_single_srn=False,
                  use_unet_renderer=False,
@@ -33,8 +31,6 @@ class SRNsModel(nn.Module):
         self.num_hidden_units_phi = 256
         self.phi_layers = 4  # includes the in and out layers
         self.rendering_layers = 5  # includes the in and out layers
-        self.img_H = img_H
-        self.img_W = img_W
         self.sphere_trace_steps = tracing_steps
         self.freeze_networks = freeze_networks
         self.fit_single_srn = fit_single_srn
@@ -58,14 +54,11 @@ class SRNsModel(nn.Module):
                                                  out_ch=self.num_hidden_units_phi)
 
         self.ray_marcher = custom_layers.Raymarcher(num_feature_channels=self.num_hidden_units_phi,
-                                                    raymarch_steps=self.sphere_trace_steps,
-                                                    H=self.img_H,
-                                                    W=self.img_W)
+                                                    raymarch_steps=self.sphere_trace_steps)
 
         if use_unet_renderer:
-            # Does not support non-square image rendering
             self.pixel_generator = custom_layers.DeepvoxelsRenderer(nf0=32, in_channels=self.num_hidden_units_phi,
-                                                                    input_resolution=128, img_H=128, img_W=128)
+                                                                    input_resolution=128, img_sidelength=128)
         else:
             self.pixel_generator = pytorch_prototyping.FCBlock(hidden_ch=self.num_hidden_units_phi,
                                                                num_hidden_layers=self.rendering_layers - 1,
@@ -142,10 +135,10 @@ class SRNsModel(nn.Module):
         batch_size = pred_imgs.shape[0]
 
         if not isinstance(pred_imgs, np.ndarray):
-            pred_imgs = util.lin2img(pred_imgs, self.img_H, self.img_W).detach().cpu().numpy()
+            pred_imgs = util.lin2img(pred_imgs).detach().cpu().numpy()
 
         if not isinstance(trgt_imgs, np.ndarray):
-            trgt_imgs = util.lin2img(trgt_imgs, self.img_H, self.img_W).detach().cpu().numpy()
+            trgt_imgs = util.lin2img(trgt_imgs).detach().cpu().numpy()
 
         psnrs, ssims = list(), list()
         for i in range(batch_size):
@@ -181,11 +174,11 @@ class SRNsModel(nn.Module):
         normals = geometry.compute_normal_map(x_img=x_cam, y_img=y_cam, z=z_cam, intrinsics=intrinsics)
         normals = F.pad(normals, pad=(1, 1, 1, 1), mode="constant", value=1.)
 
-        predictions = util.lin2img(predictions, self.img_H, self.img_W)
+        predictions = util.lin2img(predictions)
 
         if ground_truth is not None:
             trgt_imgs = ground_truth["rgb"]
-            trgt_imgs = util.lin2img(trgt_imgs, self.img_H, self.img_W)
+            trgt_imgs = util.lin2img(trgt_imgs)
 
             return torch.cat((normals.cpu(), predictions.cpu(), trgt_imgs.cpu()), dim=3).numpy()
         else:
@@ -193,15 +186,7 @@ class SRNsModel(nn.Module):
 
     def get_output_img(self, prediction):
         pred_imgs, _ = prediction
-        return util.lin2img(pred_imgs, self.img_H, self.img_W)
-
-    def set_img_H(self, H):
-        self.img_H = H
-        self.ray_marcher.set_img_H(H)
-
-    def set_img_W(self, W):
-        self.img_W = W
-        self.ray_marcher.set_img_W(W)
+        return util.lin2img(pred_imgs)
 
     def write_updates(self, writer, predictions, ground_truth, iter, prefix=""):
         """Writes tensorboard summaries using tensorboardx api.
@@ -239,7 +224,7 @@ class SRNsModel(nn.Module):
 
         if not iter % 100:
             output_vs_gt = torch.cat((predictions, trgt_imgs), dim=0)
-            output_vs_gt = util.lin2img(output_vs_gt, self.img_H, self.img_W)
+            output_vs_gt = util.lin2img(output_vs_gt)
             writer.add_image(prefix + "Output_vs_gt",
                              torchvision.utils.make_grid(output_vs_gt,
                                                          scale_each=False,
@@ -247,22 +232,16 @@ class SRNsModel(nn.Module):
                              iter)
 
             rgb_loss = ((predictions.float().cuda() - trgt_imgs.float().cuda()) ** 2).mean(dim=2, keepdim=True)
-            rgb_loss = util.lin2img(rgb_loss, self.img_H, self.img_W)
+            rgb_loss = util.lin2img(rgb_loss)
 
-            # reshape for 1D images
-            fig_ims = [rgb_loss[i].detach().cpu().numpy().squeeze()
-                                    for i in range(batch_size)]
-            # reshape for 1D images
-            for fi in range(len(fig_ims)):
-                if len(fig_ims[fi].shape) == 1:
-                    fig_ims[fi] = fig_ims[fi].reshape((1, -1))
-            fig = util.show_images(fig_ims)
+            fig = util.show_images([rgb_loss[i].detach().cpu().numpy().squeeze()
+                                    for i in range(batch_size)])
             writer.add_figure(prefix + "rgb_error_fig",
                               fig,
                               iter,
                               close=True)
 
-            depth_maps_plot = util.lin2img(depth_maps, self.img_H, self.img_W)
+            depth_maps_plot = util.lin2img(depth_maps)
             writer.add_image(prefix + "pred_depth",
                              torchvision.utils.make_grid(depth_maps_plot.repeat(1, 3, 1, 1),
                                                          scale_each=True,
@@ -286,7 +265,6 @@ class SRNsModel(nn.Module):
         pose = input["pose"].cuda()
         intrinsics = input["intrinsics"].cuda()
         uv = input["uv"].cuda().float()
-
 
         if self.fit_single_srn:
             phi = self.phi
@@ -317,13 +295,11 @@ class SRNsModel(nn.Module):
         # Calculate normal map
         with torch.no_grad():
             batch_size = uv.shape[0]
-
             x_cam = uv[:, :, 0].view(batch_size, -1)
             y_cam = uv[:, :, 1].view(batch_size, -1)
             z_cam = depth_maps.view(batch_size, -1)
 
-            normals = geometry.compute_normal_map(x_img=x_cam, y_img=y_cam, z=z_cam, intrinsics=intrinsics, img_H=self.img_H, img_W=self.img_W)
-
+            normals = geometry.compute_normal_map(x_img=x_cam, y_img=y_cam, z=z_cam, intrinsics=intrinsics)
             self.logs.append(("image", "normals",
                               torchvision.utils.make_grid(normals, scale_each=True, normalize=True), 100))
 
