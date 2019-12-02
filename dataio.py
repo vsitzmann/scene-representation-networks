@@ -19,14 +19,11 @@ class SceneInstanceDataset():
                  instance_idx,
                  instance_dir,
                  specific_observation_idcs=None,  # For few-shot case: Can pick specific observations only
-                 img_H=None,
-                 img_W=None,
+                 img_sidelength=None,
                  num_images=-1):
         self.instance_idx = instance_idx
-        self.img_H = img_H
-        self.img_W = img_W
+        self.img_sidelength = img_sidelength
         self.instance_dir = instance_dir
-
 
         color_dir = os.path.join(instance_dir, "rgb")
         pose_dir = os.path.join(instance_dir, "pose")
@@ -55,24 +52,19 @@ class SceneInstanceDataset():
             self.pose_paths = pick(self.pose_paths, idcs)
             self.param_paths = pick(self.param_paths, idcs)
 
-
-    def set_img_H(self, H):
-        """For multi-resolution training: Updates the image height with which images are loaded."""
-        self.img_H = H
-
-    def set_img_W(self, W):
-        """For multi-resolution training: Updates the image width with which images are loaded."""
-        self.img_W = W
+    def set_img_sidelength(self, new_img_sidelength):
+        """For multi-resolution training: Updates the image sidelength with whichimages are loaded."""
+        self.img_sidelength = new_img_sidelength
 
     def __len__(self):
         return len(self.pose_paths)
 
     def __getitem__(self, idx):
         intrinsics, _, _, _ = util.parse_intrinsics(os.path.join(self.instance_dir, "intrinsics.txt"),
-                                                                  trgt_H=self.img_H, trgt_W=self.img_W)
+                                                                  trgt_sidelength=self.img_sidelength)
         intrinsics = torch.Tensor(intrinsics).float()
 
-        rgb = data_util.load_rgb(self.color_paths[idx], H=self.img_H, W=self.img_W)
+        rgb = data_util.load_rgb(self.color_paths[idx], sidelength=self.img_sidelength)
         rgb = rgb.reshape(3, -1).transpose(1, 0)
 
         pose = data_util.load_pose(self.pose_paths[idx])
@@ -82,7 +74,7 @@ class SceneInstanceDataset():
         else:
             params = np.array([0])
 
-        uv = np.mgrid[0:self.img_H, 0:self.img_W].astype(np.int32)
+        uv = np.mgrid[0:self.img_sidelength, 0:self.img_sidelength].astype(np.int32)
         uv = torch.from_numpy(np.flip(uv, axis=0).copy()).long()
         uv = uv.reshape(2, -1).transpose(1, 0)
 
@@ -91,48 +83,6 @@ class SceneInstanceDataset():
             "rgb": torch.from_numpy(rgb).float(),
             "pose": torch.from_numpy(pose).float(),
             "uv": uv,
-            "h": self.img_H,
-            "w": self.img_W,
-            "param": torch.from_numpy(params).float(),
-            "intrinsics": intrinsics
-        }
-        return sample
-
-
-class SceneInstanceDataset2D(SceneInstanceDataset):
-    """This creates a dataset class for a single object instance (such as a single car). If input dataset is in 3D, converts to 2D by sampling the center line."""
-
-
-    def __getitem__(self, idx):
-        intrinsics, _, _, _ = util.parse_intrinsics(os.path.join(self.instance_dir, "intrinsics.txt"),
-                                                                  trgt_H=self.img_H, trgt_W=self.img_W)
-        intrinsics = torch.Tensor(intrinsics).float()
-        mid_point = self.img_H // 2
-
-        rgb = data_util.load_rgb(self.color_paths[idx], H=self.img_H, W=self.img_W)
-        # Force into 1D image if necessary
-        rgb = rgb[:,mid_point:mid_point+1]
-        rgb = rgb.reshape(3, -1).transpose(1, 0)
-
-        pose = data_util.load_pose(self.pose_paths[idx])
-
-        if self.has_params:
-            params = data_util.load_params(self.param_paths[idx])
-        else:
-            params = np.array([0])
-
-        uv = np.mgrid[0:self.img_H, 0:self.img_W].astype(np.int32)
-        uv = uv[:, mid_point:mid_point+1]
-        uv = torch.from_numpy(np.flip(uv, axis=0).copy()).long()
-        uv = uv.reshape(2, -1).transpose(1, 0)
-
-        sample = {
-            "instance_idx": torch.Tensor([self.instance_idx]).squeeze(),
-            "rgb": torch.from_numpy(rgb).float(),
-            "pose": torch.from_numpy(pose).float(),
-            "uv": uv,
-            "h": self.img_H,
-            "w": self.img_W,
             "param": torch.from_numpy(params).float(),
             "intrinsics": intrinsics
         }
@@ -144,16 +94,13 @@ class SceneClassDataset(torch.utils.data.Dataset):
 
     def __init__(self,
                  root_dir,
-                 img_H=None,
-                 img_W=None,
-                 use_2D_dataset=False,
+                 img_sidelength=None,
                  max_num_instances=-1,
                  max_observations_per_instance=-1,
                  specific_observation_idcs=None,  # For few-shot case: Can pick specific observations only
                  samples_per_instance=2):
 
         self.samples_per_instance = samples_per_instance
-
         self.instance_dirs = sorted(glob(os.path.join(root_dir, "*/")))
 
         assert (len(self.instance_dirs) != 0), "No objects in the data directory"
@@ -161,28 +108,20 @@ class SceneClassDataset(torch.utils.data.Dataset):
         if max_num_instances != -1:
             self.instance_dirs = self.instance_dirs[:max_num_instances]
 
-        InstanceDatasetType = SceneInstanceDataset
-        if use_2D_dataset:
-            InstanceDatasetType = SceneInstanceDataset2D
-
-        self.all_instances = [InstanceDatasetType(instance_idx=idx,
+        self.all_instances = [SceneInstanceDataset(instance_idx=idx,
                                                    instance_dir=dir,
                                                    specific_observation_idcs=specific_observation_idcs,
-                                                   img_H=img_H,
-                                                   img_W=img_W,
+                                                   img_sidelength=img_sidelength,
                                                    num_images=max_observations_per_instance)
                               for idx, dir in enumerate(self.instance_dirs)]
 
         self.num_per_instance_observations = [len(obj) for obj in self.all_instances]
         self.num_instances = len(self.all_instances)
 
-    def set_img_H(self, H):
-        """For multi-resolution training: Updates the image height with which images are loaded."""
-        self.img_H = H
-
-    def set_img_W(self, W):
-        """For multi-resolution training: Updates the image width with which images are loaded."""
-        self.img_W = W
+    def set_img_sidelength(self, new_img_sidelength):
+        """For multi-resolution training: Updates the image sidelength with whichimages are loaded."""
+        for instance in self.all_instances:
+            instance.set_img_sidelength(new_img_sidelength)
 
     def __len__(self):
         return np.sum(self.num_per_instance_observations)

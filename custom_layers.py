@@ -63,13 +63,8 @@ class DepthSampler(nn.Module):
 class Raymarcher(nn.Module):
     def __init__(self,
                  num_feature_channels,
-                 raymarch_steps,
-                 H,
-                 W):
+                 raymarch_steps):
         super().__init__()
-
-        self.img_H = H
-        self.img_W = W
 
         self.n_feature_channels = num_feature_channels
         self.steps = raymarch_steps
@@ -84,12 +79,6 @@ class Raymarcher(nn.Module):
         self.out_layer = nn.Linear(hidden_size, 1)
         self.counter = 0
 
-    def set_img_H(self, H):
-        self.img_H = H
-
-    def set_img_W(self, W):
-        self.img_W = W
-
     def forward(self,
                 cam2world,
                 phi,
@@ -103,7 +92,6 @@ class Raymarcher(nn.Module):
                                                intrinsics=intrinsics)
 
         initial_depth = torch.zeros((batch_size, num_samples, 1)).normal_(mean=0.05, std=5e-4).cuda()
-
         init_world_coords = geometry.world_from_xy_depth(uv,
                                                          initial_depth,
                                                          intrinsics=intrinsics,
@@ -138,20 +126,15 @@ class Raymarcher(nn.Module):
         if not self.counter % 100:
             # Write tensorboard summary for each step of ray-marcher.
             drawing_depths = torch.stack(depths, dim=0)[:, 0, :, :]
-            drawing_depths = util.lin2img(drawing_depths, self.img_H, self.img_W).repeat(1, 3, 1, 1)
+            drawing_depths = util.lin2img(drawing_depths).repeat(1, 3, 1, 1)
             log.append(('image', 'raycast_progress',
                         torch.clamp(torchvision.utils.make_grid(drawing_depths, scale_each=False, normalize=True), 0.0,
                                     5),
                         100))
 
             # Visualize residual step distance (i.e., the size of the final step)
-            fig_ims = [util.lin2img(signed_distance, self.img_H, self.img_W)[i, :, :, :].detach().cpu().numpy().squeeze()
-                                    for i in range(batch_size)]
-            # reshape for 1D images
-            for fi in range(len(fig_ims)):
-                if len(fig_ims[fi].shape) == 1:
-                    fig_ims[fi] = fig_ims[fi].reshape((1, -1))
-            fig = util.show_images(fig_ims)
+            fig = util.show_images([util.lin2img(signed_distance)[i, :, :, :].detach().cpu().numpy().squeeze()
+                                    for i in range(batch_size)])
             log.append(('figure', 'stopping_distances', fig, 100))
         self.counter += 1
 
@@ -163,15 +146,13 @@ class DeepvoxelsRenderer(nn.Module):
                  nf0,
                  in_channels,
                  input_resolution,
-                 img_H,
-                 img_W):
+                 img_sidelength):
         super().__init__()
 
         self.nf0 = nf0
         self.in_channels = in_channels
         self.input_resolution = input_resolution
-        self.img_H = img_H
-        self.img_W = img_W
+        self.img_sidelength = img_sidelength
 
         self.num_down_unet = util.num_divisible_by_2(input_resolution)
         self.num_upsampling = util.num_divisible_by_2(img_sidelength) - self.num_down_unet
@@ -207,14 +188,8 @@ class DeepvoxelsRenderer(nn.Module):
         self.net += [nn.Tanh()]
         self.net = nn.Sequential(*self.net)
 
-    def set_img_H(self, H):
-        self.img_H = H
-
-    def set_img_W(self, W):
-        self.img_W = W
-
     def forward(self, input):
         batch_size, _, ch = input.shape
-        input = input.permute(0, 2, 1).view(batch_size, ch, self.img_H, self.img_W)
+        input = input.permute(0, 2, 1).view(batch_size, ch, self.img_sidelength, self.img_sidelength)
         out = self.net(input)
         return out.view(batch_size, 3, -1).permute(0, 2, 1)
