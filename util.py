@@ -41,7 +41,7 @@ def write_img(img, path):
 def in_out_to_param_count(in_out_tuples):
     return np.sum([np.prod(in_out) + in_out[-1] for in_out in in_out_tuples])
 
-def parse_intrinsics(filepath, trgt_sidelength=None, invert_y=False):
+def parse_intrinsics(filepath, trgt_H=None, trgt_W=None, invert_y=False):
     # Get camera intrinsics
     with open(filepath, 'r') as file:
         f, cx, cy, _ = map(float, file.readline().split())
@@ -59,10 +59,12 @@ def parse_intrinsics(filepath, trgt_sidelength=None, invert_y=False):
 
     world2cam_poses = bool(world2cam_poses)
 
-    if trgt_sidelength is not None:
-        cx = cx/width * trgt_sidelength
-        cy = cy/height * trgt_sidelength
-        f = trgt_sidelength / height * f
+    if trgt_H is not None:
+        cy = cy/height * trgt_H
+    if trgt_W is not None:
+        cx = cx/width * trgt_W
+        f = trgt_W / width * f
+        
 
     fx = f
     if invert_y:
@@ -78,10 +80,9 @@ def parse_intrinsics(filepath, trgt_sidelength=None, invert_y=False):
 
     return full_intrinsic, grid_barycenter, scale, world2cam_poses
 
-def lin2img(tensor):
+def lin2img(tensor, H, W):
     batch_size, num_samples, channels = tensor.shape
-    sidelen = np.sqrt(num_samples).astype(int)
-    return tensor.permute(0,2,1).view(batch_size, channels, sidelen, sidelen)
+    return tensor.permute(0,2,1).view(batch_size, channels, H, W)
 
 def num_divisible_by_2(number):
     i = 0

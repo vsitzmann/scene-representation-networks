@@ -15,10 +15,21 @@ p.add('-c', '--config_filepath', required=False, is_config_file=True, help='Path
 
 # Multi-resolution training: Instead of passing only a single value, each of these command-line arguments take comma-
 # separated lists. If no multi-resolution training is required, simply pass single values (see default values).
-p.add_argument('--img_sidelengths', type=str, default='64', required=False,
-               help='Progression of image sidelengths.'
-                    'If comma-separated list, will train on each sidelength for respective max_steps.'
+p.add_argument('--img_Hs', type=str, default='64', required=False,
+               help='Progression of image heights; aligned with img_W.'
+                    'If comma-separated list, will train on each height for respective max_steps.'
                     'Images are downsampled to the respective resolution.')
+p.add_argument('--img_Ws', type=str, default='64', required=False,
+               help='Progression of image widths; aligned with img_H.'
+                    'If comma-separated list, will train on each width for respective max_steps.'
+                    'Images are downsampled to the respective resolution.')
+p.add_argument('--img_sidelengths', type=str, default='0', required=False,
+               help='Progression of image sidelengths (assumes square images).'
+                    'If comma-separated list, will train on each height for respective max_steps.'
+                    'Images are downsampled to the respective resolution.'
+                    'If specified, takes precendence to img_Hs and img_Ws.')
+p.add_argument('--use_2D_dataset', action='store_true', default=False,
+               help='Whether to force conversion of train data into 1D images (2D world).')
 p.add_argument('--max_steps_per_img_sidelength', type=str, default="200000",
                help='Maximum number of optimization steps.'
                     'If comma-separated list, is understood as steps per image_sidelength.')
@@ -95,20 +106,31 @@ def train():
         specific_observation_idcs = None
 
     img_sidelengths = util.parse_comma_separated_integers(opt.img_sidelengths)
+    if img_sidelengths[0] > 0:
+      img_Hs = img_sidelengths
+      img_Ws = img_sidelengths
+    else:
+      img_Hs = util.parse_comma_separated_integers(opt.img_Hs)
+      img_Ws = util.parse_comma_separated_integers(opt.img_Ws)
+
     batch_size_per_sidelength = util.parse_comma_separated_integers(opt.batch_size_per_img_sidelength)
     max_steps_per_sidelength = util.parse_comma_separated_integers(opt.max_steps_per_img_sidelength)
 
     train_dataset = dataio.SceneClassDataset(root_dir=opt.data_root,
                                              max_num_instances=opt.max_num_instances_train,
                                              max_observations_per_instance=opt.max_num_observations_train,
-                                             img_sidelength=img_sidelengths[0],
+                                             img_H=img_Hs[0],
+                                             img_W=img_Ws[0],
+                                             use_2D_dataset=opt.use_2D_dataset,
                                              specific_observation_idcs=specific_observation_idcs,
                                              samples_per_instance=1)
 
-    assert (len(img_sidelengths) == len(batch_size_per_sidelength)), \
-        "Different number of image sidelengths passed than batch sizes."
-    assert (len(img_sidelengths) == len(max_steps_per_sidelength)), \
-        "Different number of image sidelengths passed than max steps."
+    assert (len(img_Hs) == len(img_Ws)), \
+        "Different number of image heights passed than image widths."
+    assert (len(img_Hs) == len(batch_size_per_sidelength)), \
+        "Different number of image heights/widths passed than batch sizes."
+    assert (len(img_Hs) == len(max_steps_per_sidelength)), \
+        "Different number of image heights/widths passed than max steps."
 
     if not opt.no_validation:
         assert (opt.val_root is not None), "No validation directory passed."
@@ -116,7 +138,9 @@ def train():
         val_dataset = dataio.SceneClassDataset(root_dir=opt.val_root,
                                                max_num_instances=opt.max_num_instances_val,
                                                max_observations_per_instance=opt.max_num_observations_val,
-                                               img_sidelength=opt.img_sidelength,
+                                               img_H=img_Hs[0],
+                                               img_W=img_Ws[0],
+                                               use_2D_dataset=opt.use_2D_dataset,
                                                samples_per_instance=1)
         collate_fn = val_dataset.collate_fn
         val_dataloader = DataLoader(val_dataset,
@@ -165,14 +189,20 @@ def train():
     step = 0
 
     print('Beginning training...')
-    # This loop implements training with an increasing image sidelength.
-    cum_max_steps = 0  # Tracks max_steps cumulatively over all image sidelengths.
-    for img_sidelength, max_steps, batch_size in zip(img_sidelengths, max_steps_per_sidelength,
+    # This loop implements training with an increasing image height/width.
+    cum_max_steps = 0  # Tracks max_steps cumulatively over all image heights/widths.
+    for img_H, img_W, max_steps, batch_size in zip(img_Hs, img_Ws, max_steps_per_sidelength,
                                                      batch_size_per_sidelength):
+
+
+        train_dataset.set_img_H(img_H)
+        train_dataset.set_img_W(img_W)
+        if opt.use_2D_dataset:
+          img_H = 1
+
         print("\n" + "#" * 10)
-        print("Training with sidelength %d for %d steps with batch size %d" % (img_sidelength, max_steps, batch_size))
+        print("Training with height %d and width %d for %d steps with batch size %d" % (img_H, img_W, max_steps, batch_size))
         print("#" * 10 + "\n")
-        train_dataset.set_img_sidelength(img_sidelength)
 
         # Need to instantiate DataLoader every time to set new batch size.
         train_dataloader = DataLoader(train_dataset,
@@ -183,6 +213,9 @@ def train():
                                       pin_memory=opt.preload)
 
         cum_max_steps += max_steps
+
+        model.set_img_H(img_H)
+        model.set_img_W(img_W)
 
         # Loops over epochs.
         while True:

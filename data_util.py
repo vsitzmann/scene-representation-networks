@@ -9,14 +9,14 @@ import skimage
 import pandas as pd
 
 
-def load_rgb(path, sidelength=None):
+def load_rgb(path, H=None, W=None):
     img = imageio.imread(path)[:, :, :3]
     img = skimage.img_as_float32(img)
 
     img = square_crop_img(img)
 
-    if sidelength is not None:
-        img = cv2.resize(img, (sidelength, sidelength), interpolation=cv2.INTER_AREA)
+    if H is not None and W is not None:
+        img = cv2.resize(img, (H, W), interpolation=cv2.INTER_AREA)
 
     img -= 0.5
     img *= 2.
@@ -24,11 +24,11 @@ def load_rgb(path, sidelength=None):
     return img
 
 
-def load_depth(path, sidelength=None):
+def load_depth(path, H=None, W=None):
     img = cv2.imread(path, cv2.IMREAD_UNCHANGED).astype(np.float32)
 
-    if sidelength is not None:
-        img = cv2.resize(img, (sidelength, sidelength), interpolation=cv2.INTER_NEAREST)
+    if H is not None and W is not None:
+        img = cv2.resize(img, (H, W), interpolation=cv2.INTER_NEAREST)
 
     img *= 1e-4
 
