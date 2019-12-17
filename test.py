@@ -29,7 +29,7 @@ p.add_argument('--specific_observation_idcs', type=str, default=None,
 p.add_argument('--has_params', action='store_true', default=False,
                help='Whether each object instance already comes with its own parameter vector.')
 
-p.add_argument('--save_out_first_n', default=250, help='Only saves images of first n object instances.')
+p.add_argument('--save_out_first_n',type=int, default=250, help='Only saves images of first n object instances.')
 p.add_argument('--checkpoint_path', default=None, help='Path to trained model.')
 
 # Model options
