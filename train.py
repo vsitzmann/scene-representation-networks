@@ -32,7 +32,7 @@ p.add_argument('--val_root', required=False, help='Path to directory with valida
 p.add_argument('--logging_root', type=str, default='./logs',
                required=False, help='path to directory where checkpoints & tensorboard events will be saved.')
 
-p.add_argument('--lr', type=float, default=4e-5, help='learning rate. default=4e-4')
+p.add_argument('--lr', type=float, default=5e-5, help='learning rate. default=5e-5')
 
 p.add_argument('--l1_weight', type=float, default=200,
                help='Weight for l1 loss term (lambda_img in paper).')
@@ -116,7 +116,7 @@ def train():
         val_dataset = dataio.SceneClassDataset(root_dir=opt.val_root,
                                                max_num_instances=opt.max_num_instances_val,
                                                max_observations_per_instance=opt.max_num_observations_val,
-                                               img_sidelength=opt.img_sidelength,
+                                               img_sidelength=img_sidelengths[0],
                                                samples_per_instance=1)
         collate_fn = val_dataset.collate_fn
         val_dataloader = DataLoader(val_dataset,
