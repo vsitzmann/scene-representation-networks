@@ -34,12 +34,23 @@ The code is organized as follows:
 * dataio.py loads training and testing data.
 * data_util.py and util.py contain utility functions.
 * train.py contains the training code.
-* test.py contains the training code.
+* test.py contains the testing code.
 * srns.py contains the core SRNs model.
 * hyperlayers.py contains implementations of different hypernetworks.
 * custom_layers.py contains implementations of the raymarcher and the DeepVoxels U-Net renderer.
 * geometry.py contains utility functions for 3D and projective geometry.
 * util.py contains misc utility functions.
+
+### Pre-Trained models
+There are pre-trained models for the shapenet car and chair datasets available, including tensorboard event files of the
+full training process. 
+
+Please download them [here](https://drive.google.com/open?id=1IdOywOSLuK6WlkO5_h-ykr3ubeY9eDig).
+
+The checkpoint is in the "checkpoints" directory - to load weights from the checkpoint, simply pass the full path to the checkpoint
+to the "--checkpoint_path" command-line argument. 
+
+To inspect the progress of how I trained these models, run tensorboard in the "events" subdirectory. 
 
 ### Data
 Four different datasets appear in the paper:
