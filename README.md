@@ -26,7 +26,7 @@ conda env create -f environment.yml
 This repository depends on a git submodule, [pytorch-prototyping](https://github.com/vsitzmann/pytorch_prototyping). 
 To clone both the main repo and the submodule, use
 ```
-git clone --recurse-submodules git@github.com:vsitzmann/scene-representation-networks.git
+git clone --recurse-submodules https://github.com/vsitzmann/scene-representation-networks.git
 ```
 
 ### High-Level structure
