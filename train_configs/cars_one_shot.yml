@@ -9,4 +9,4 @@ freeze_networks: True
 img_sidelengths: 128
 batch_size_per_img_sidelength: 8
 max_steps_per_img_sidelength: 100000
-
+no_validation: True
