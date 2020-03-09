@@ -67,9 +67,9 @@ class SRNsModel(nn.Module):
                                                                outermost_linear=True)
 
         if self.freeze_networks:
-            all_network_params = (self.pixel_generator.parameters()
-                                  + self.ray_marcher.parameters()
-                                  + self.hyper_phi.parameters())
+            all_network_params = (list(self.pixel_generator.parameters())
+                                  + list(self.ray_marcher.parameters())
+                                  + list(self.hyper_phi.parameters()))
             for param in all_network_params:
                 param.requires_grad = False
 
