@@ -127,7 +127,7 @@ def custom_load(model, path, discriminator=None, overwrite_embeddings=False, ove
     whole_dict = torch.load(checkpoint_path)
 
     if overwrite_embeddings:
-        del whole_dict['model']['obj_embedding.weight']
+        del whole_dict['model']['latent_codes.weight']
 
     if overwrite_renderer:
         keys_to_remove = [key for key in whole_dict['model'].keys() if 'rendering_net' in key]
