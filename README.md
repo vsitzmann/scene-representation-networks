@@ -60,6 +60,9 @@ Four different datasets appear in the paper:
 
 Please download the datasets [here](https://drive.google.com/drive/folders/1OkYgeRcIcLOFu1ft5mRODWNQaPJ0ps90?usp=sharing).
 
+### Rendering your own datasets
+I have put together a few scripts for the Blender python interface that make it easy to render your own dataset. Please find them [here](https://github.com/vsitzmann/shapenet_renderer/blob/master/shapenet_spherical_renderer.py).
+
 ### Coordinate and camera parameter conventions
 This code uses an "OpenCV" style camera coordinate system, where the Y-axis points downwards (the up-vector points in the negative Y-direction), 
 the X-axis points right, and the Z-axis points into the image plane. Camera poses are assumed to be in a "camera2world" format,
